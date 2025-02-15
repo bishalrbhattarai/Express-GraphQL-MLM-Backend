@@ -1,0 +1,72 @@
+name: Node.js CI with MySQL and TypeScript
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    services:
+      mysql:
+        image: mysql:8
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_db
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        options: --health-cmd="mysqladmin ping -h localhost -u test_user --password=test_password" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: npm
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Debug TypeScript Version and Config
+      run: |
+        echo "TypeScript Version:"
+        npx tsc --version
+        echo "Checking TypeScript Configuration:"
+        npx tsc --showConfig
+
+    - name: Wait for MySQL to be ready
+      run: |
+        for i in {1..10}; do
+          if mysqladmin ping -h 127.0.0.1 -u test_user --password=test_password --silent; then
+            echo "MySQL is ready!";
+            break;
+          fi
+          echo "Waiting for MySQL..."
+          sleep 5
+        done
+
+    - name: Set up Prisma
+      run: |
+        npx prisma migrate deploy
+        npx prisma generate
+      env:
+        DATABASE_URL: mysql://test_user:test_password@127.0.0.1:3306/test_db
+
+    - name: Build Project
+      run: npm run build
+      timeout-minutes: 10
+
+
+    #33

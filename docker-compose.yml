@@ -1,0 +1,30 @@
+version: "3.4"
+
+services:
+  postgres:
+    container_name: payment-record-system-db
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: 1234
+
+  mysql:
+    container_name: payment-record-system-db
+    image: mysql
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 1234
+
+volumes:
+  postgres_data:

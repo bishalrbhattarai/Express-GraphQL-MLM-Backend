@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  organizationName String
+  password         String
+  isVerified       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user           User[]
+  team           Team[]
+  role           Role[]
+  RolePermission RolePermission[]
+  Client         Client[]
+  Deal           Deal[]
+  Payment        Payment[]
+  SourceType     SourceType[]
+  WorkType       WorkType[]
+  Commission     Commission[]
+  Offer          Offer[]
+  OfferAssign    OfferAssign[]
+
+  @@map("organizations")
+}
+
+model OrganizationRegistrationOTP {
+  id                String   @id @default(cuid())
+  organizationEmail String
+  otp               String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("organization_registration_otps")
+}
+
+model User {
+  id             String       @id @default(cuid())
+  userId         String
+  fullName       String
+  email          String
+  password       String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  teamId         String?
+  team           Team?        @relation(fields: [teamId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  role           UserRole[]
+  Deal           Deal[]
+  Payment        Payment[]
+  Client         Client[]
+
+  @@unique([userId, organizationId])
+  @@unique([fullName, organizationId])
+  @@map("users")
+}
+
+model Team {
+  id             String        @id @default(cuid())
+  teamId         String
+  teamName       String
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  User           User[]
+  OfferAssign    OfferAssign[]
+
+  @@unique([teamId, organizationId])
+  @@map("teams")
+}
+
+model Role {
+  id             String       @id @default(cuid())
+  roleName       String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  userRole       UserRole[]
+  RolePermission RolePermission[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id             String       @id @default(cuid())
+  action         String
+  resource       String
+  roleId         String
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("role_permissions")
+}
+
+model Client {
+  id             String       @id @default(cuid())
+  clientId       String
+  fullName       String
+  nationality    String
+  email          String
+  contact        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  isEdited       Boolean      @default(false)
+  organizationId String
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  Deal           Deal[]       @relation("ClientDeals")
+
+  @@unique([clientId, organizationId])
+  @@map("clients")
+}
+
+model SourceType {
+  id             String       @id @default(cuid())
+  name           String
+  description    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  Deal           Deal[]
+
+  @@unique([organizationId, name])
+  @@map("source_types")
+}
+
+model WorkType {
+  id             String       @id @default(cuid())
+  name           String
+  description    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  Deal           Deal[]
+
+  @@unique([organizationId, name])
+  @@map("work_types")
+}
+
+model Deal {
+  id             String       @id @default(cuid())
+  dealId         String
+  clientId       String
+  dealName       String
+  client         Client       @relation("ClientDeals", fields: [clientId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  workTypeId     String
+  workType       WorkType     @relation(fields: [workTypeId], references: [id])
+  sourceTypeId   String
+  sourceType     SourceType   @relation(fields: [sourceTypeId], references: [id])
+  dealValue      Decimal
+  dealDate       DateTime
+  dueDate        DateTime
+  remarks        String
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  Payment        Payment[]
+
+  isEdited  Boolean   @default(false)
+  editedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([dealId, organizationId])
+  @@map("deals")
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  paymentDate         DateTime
+  receivedAmount      Decimal
+  receiptImage        String
+  remarks             String
+  paymentStatus       PaymentStatus @default(PENDING)
+  denialRemarks       String?
+  confirmationVoucher String?
+  dealId              String
+  deal                Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id])
+  isEdited            Boolean       @default(false)
+  editedAt            DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  verifierId          String?
+  verifier            User?         @relation(fields: [verifierId], references: [id])
+
+  @@map("payments")
+}
+
+// model PaymentVerifyed {
+//   id        String   @id @default(cuid())
+//   userId    String
+//   user      User     @relation(fields: [userId], references: [id])
+//   paymentId String
+//   payment   Payment  @relation(fields: [paymentId], references: [id])
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@map("paymentVerifyed")
+// }
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  DENIED
+}
+
+model Commission {
+  id                  String       @id @default(cuid())
+  name                String
+  totalSales          Decimal      @default(0)
+  currency            String
+  convertedAmount     Decimal      @default(0)
+  commissionPercent   Decimal      @default(0)
+  rate                Decimal      @default(0)
+  bonus               Decimal      @default(0)
+  baseCurrency        String
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id])
+  totalCommission     Decimal      @default(0)
+  totalReceivedAmount Decimal      @default(0)
+  commissionDate      DateTime
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@map("commissions")
+}
+
+model Offer {
+  id             String        @id @default(cuid())
+  target         Decimal       @default(0)
+  bonus          Decimal       @default(0)
+  offer          Decimal       @default(0)
+  offerDate      String?
+  remarks        String?
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  OfferAssign    OfferAssign[]
+
+  @@map("offers")
+}
+
+model OfferAssign {
+  id             String       @id @default(cuid())
+  offerId        String
+  offer          Offer        @relation(fields: [offerId], references: [id])
+  teamId         String
+  team           Team         @relation(fields: [teamId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("offer_assigns")
+}
